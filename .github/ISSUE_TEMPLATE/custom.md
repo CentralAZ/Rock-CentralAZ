@@ -1,6 +1,9 @@
 ---
 name: Question
 about: The issue tracker is not for questions. Please ask questions on https://www.rockrms.com/Rock/Ask
+title: ''
+labels: ''
+assignees: ''
 
 ---
 
