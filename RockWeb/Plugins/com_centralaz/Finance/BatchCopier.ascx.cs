@@ -130,7 +130,14 @@ namespace RockWeb.Plugins.com_centralaz.Finance
             FinancialBatch oldBatch = null;
             var changes = new History.HistoryChangeList();
 
-            int? oldBatchId = PageParameter( "batchId" ).AsIntegerOrNull();
+            // 20240613 - Derek Mangrum (code by Nick Airdo)
+            //int? oldBatchId = PageParameter( "batchId" ).AsIntegerOrNull();  //original code commented out
+            //
+            // Patch to fix for hashed BatchIds in the PageParameter 
+            //
+            var batchIdOrKey = PageParameter( "batchId" );
+            int? oldBatchId = batchIdOrKey.AsIntegerOrNull() ?? Rock.Utility.IdHasher.Instance.GetId( batchIdOrKey );
+            //
             if ( oldBatchId != null )
             {
                 oldBatch = batchService.Get( oldBatchId.Value );
