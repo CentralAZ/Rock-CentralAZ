@@ -36,6 +36,12 @@
 						@Order,0,'',1,
 						'fa fa-bug','6A588BAA-9A93-4D4F-9700-2B6FF638296B', 1)
 				END
+				ELSE
+				BEGIN
+					UPDATE [Page]
+					SET [SiteId] = 1
+					WHERE [Id] = @PageId
+				END
 
         -----------------------------------------------------------------------
         -- UpdateBlockType
