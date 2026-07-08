@@ -1,4 +1,4 @@
-// <copyright>
+﻿// <copyright>
 // Copyright by Central Christian Church
 //
 // Licensed under the Rock Community License (the "License");
@@ -15,11 +15,20 @@
 // </copyright>
 //
 using System;
+using System;
+using System.Collections.Generic;
 using System.Drawing;
-using System.Text;
-using System.Drawing.Printing;
-using System.Drawing.Imaging;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
+using System.Drawing.Printing;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Web.UI;
+using System.Web.UI.HtmlControls;
+using Rock.Address;
+using Rock.Model;
+using Rock.Web.UI;
 
 namespace com.centralaz.CheckInLabels
 {
@@ -100,9 +109,9 @@ namespace com.centralaz.CheckInLabels
 		{
 			get { return _ParentsInitialsTitle; }
 			set { _ParentsInitialsTitle = value; }
-		}
+		}        
 
-		protected string _SecurityToken = string.Empty;
+        protected string _SecurityToken = string.Empty;
 		public string SecurityToken
 		{
 			get { return _SecurityToken; }
@@ -128,6 +137,14 @@ namespace com.centralaz.CheckInLabels
         {
             get { return _SpecialNeedsIntakeFlag; }
             set { _SpecialNeedsIntakeFlag = value; }
+        }
+
+        // Added 4/21/2026: Flag is true to indicate that a photo is not allowed
+        protected bool _PhotoFlag = false;
+        public bool PhotoFlag
+        {
+            get { return _PhotoFlag; }
+            set { _PhotoFlag = value; }
         }
 
         protected bool _HealthNoteFlag = false;
@@ -183,25 +200,28 @@ namespace com.centralaz.CheckInLabels
 		}
 
 		protected string _LogoImageFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\xlogo_bw_lg.bmp";
-		public string LogoImageFile
+        //protected string _LogoImageFile = @"C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\info.bmp";
+        public string LogoImageFile
 		{
 			get { return _LogoImageFile; }
 			set { _LogoImageFile = value; }
 		}
 
-		protected string _InfoIconFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\info.bmp";
-		public string InfoIconFile
+        protected string _InfoIconFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\info.bmp";
+        //protected string _InfoIconFile = @"C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\info.bmp";
+        public string InfoIconFile
         {
 			get { return _InfoIconFile; }
 			set { _InfoIconFile = value; }
 		}
 
-        protected string _BirthdayImageFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\cake.bmp";
+        protected string _BirthdayImageFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\cake2.bmp";
+        //protected string _BirthdayImageFile = @"C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\cake2.bmp";
         public string BirthdayImageFile
         {
             get { return _BirthdayImageFile; }
             set { _BirthdayImageFile = value; }
-        }
+        }        
 
         protected DateTime _BirthdayDate = DateTime.MinValue;
 		public DateTime BirthdayDate
@@ -210,7 +230,24 @@ namespace com.centralaz.CheckInLabels
 			set { _BirthdayDate = value; }
 		}
 
-	    protected string _RoomName = string.Empty;
+        // Added 3/10/25 
+        //protected string _PhotoPermissionImageFile = @"C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\PhotoPermission4.bmp";
+        protected string _PhotoPermissionImageFile = @"C:\inetpub\wwwroot\RockWeb\Content\InternalSite\Check-in\PhotoPermission4.bmp";
+        public string PhotoPermissionImageFile
+        {
+            get { return _PhotoPermissionImageFile; }
+            set { _PhotoPermissionImageFile = value; }
+        }
+
+        // Added 3/10/25
+        protected string _PhotoPermissionFlag = string.Empty;
+        public string PhotoPermissionFlag
+        {
+            get { return _PhotoPermissionFlag; }
+            set { _PhotoPermissionFlag = value; }
+        }
+
+        protected string _RoomName = string.Empty;
 	    public string RoomName
 	    {
             get { return _RoomName; }
@@ -348,23 +385,95 @@ namespace com.centralaz.CheckInLabels
 
 			pDoc.PrinterSettings.PrinterName = printerURL;
 
-			// Now check to see if the printer is available
-			// and call the Print method
-			if ( pDoc.PrinterSettings.IsValid )
-			{
-				pDoc.Print();
-			}
-			else
-			{
-				throw new Exception( "The printer, " + printerURL + ", is not valid. " + possibleInvalidReason );
-			}
-		}
+            //Testing printer settings
+            var nameTest = pDoc.PrinterSettings.PrinterName;
+            try
+            {
+                var validTest = pDoc.PrinterSettings.IsValid;
+            }
+            catch (Exception e)
+            {
+                ExceptionLogService.LogException( e );                
+                throw new Exception( string.Format( "Failed attempting to find '{0}' printer settings for IsValid: '{1}'", nameTest, pDoc.PrinterSettings.IsValid ) );
+                
+            }
+            
+            try
+            {
+                var isPlotter = pDoc.PrinterSettings.IsPlotter;
+            }
+            catch (Exception e)
+            {
+                ExceptionLogService.LogException( e );
+                throw new Exception( string.Format( "Failed attempting to find '{0}' printer settings for IsValid: '{1}'", nameTest, pDoc.PrinterSettings.IsPlotter ) );
 
-		/// <summary>
-		/// A string representation of a PrinterLabel.
+            }
+            //var test = pDoc.PrinterSettings.
+
+           
+
+            // Now check to see if the printer is available
+            // and call the Print method
+            if (pDoc.PrinterSettings.IsValid)
+                {
+                    pDoc.Print();
+                }
+                else
+                {
+                    throw new Exception( "The printer, " + printerURL + ", is not valid. " + possibleInvalidReason );
+                }
+
+           
+            
+        }
+
+        /// <summary>
+		/// This method will draw all the labels to the given printer.
 		/// </summary>
-		/// <returns></returns>
-		public override string ToString()
+		/// <param name="printerURL">the URI/URL of the printer.</param>
+		/// <exception cref="Exception">is thrown if the given printer is invalid or
+		/// if a problem occurs when printing.</exception>
+
+        public List<Bitmap> DrawAllLabels()
+        {
+            List<Bitmap> bitmaps = new List<Bitmap>();
+
+            Bitmap bitmap = new Bitmap( 300, 300 );            
+            using (Graphics g = Graphics.FromImage( bitmap ))
+            {
+                g.Clear( Color.White );
+                DrawAttendanceCardSetUp( g, bitmap );
+            }
+
+            bitmaps.Add( bitmap );
+
+            Bitmap bitmap2 = new Bitmap( 300, 302 );
+            using (Graphics g = Graphics.FromImage( bitmap2 ))
+            {
+                g.Clear( Color.White );
+                DrawClaimCardSetUp( g, bitmap2 );
+            }
+
+            bitmaps.Add( bitmap2 );            
+
+            Bitmap bitmap3 = new Bitmap( 300, 303 ); 
+            using (Graphics g = Graphics.FromImage( bitmap3 ))
+            {
+                g.Clear( Color.White );
+                DrawNameTagSetUp( g, bitmap3 );
+            }
+
+            bitmaps.Add( bitmap3 );
+
+            return bitmaps;          
+                        
+        }
+
+        /// <summary>
+        /// A string representation of a PrinterLabel.
+        /// </summary>
+        /// <returns></returns>
+        public override string ToString()
 		{
 			StringBuilder sb = new StringBuilder();
 			sb.Append( "AttendanceLabel -> " );
@@ -377,7 +486,8 @@ namespace com.centralaz.CheckInLabels
 			sb.Append( "ServicesTitle [" + this.ServicesTitle + "] : " );
 			sb.Append( "CheckInDate [" + this.CheckInDate + "] : " );
 			sb.Append( "HealthNotesTitle [" + this.HealthNotesTitle + "] : " );
-			sb.Append( "Services [" + this.Services + "] : " );
+            sb.Append( "PhotoFlag [" + this.PhotoFlag + "] : " );
+            sb.Append( "Services [" + this.Services + "] : " );
 			sb.Append( "FirstName [" + this.FirstName + "] : " );
 			sb.Append( "FullName [" + this.FullName + "] : " );
 			sb.Append( "Footer [" + this.Footer + "] : " );
@@ -422,24 +532,113 @@ namespace com.centralaz.CheckInLabels
 			}
 		}
 
-		/// <summary>
-		/// This is the event handler for printing only a Claim Card page.
-		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="e"></param>
-		private void pEvent_PrintClaimCardPage( object sender, PrintPageEventArgs e )
+        /// <summary>
+        /// This is the event handler for printing only the Nametag page.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void pEvent_PrintAttendanceLabelPage( object sender, PrintPageEventArgs e )
+        {
+            Graphics g = e.Graphics;
+            DrawAttendanceCardSetUp( g );
+        }
+
+        /// <summary>
+        /// This is the event handler for printing only the Nametag page.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void pEvent_PrintClaimCardPage( object sender, PrintPageEventArgs e )
+        {
+            Graphics g = e.Graphics;
+            DrawClaimCardSetUp( g );
+        }
+
+        /// <summary>
+        /// This is the event handler for printing only the Nametag page.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void pEvent_PrintNameTag( object sender, PrintPageEventArgs e )
+        {
+            Graphics g = e.Graphics;
+            DrawNameTagSetUp( g );
+        }
+
+        private void DrawClaimCardSetUp( Graphics g )
+        {
+            int labelwidth = 195;  // 2.25 inches * 96dpi
+            int labelheight = 144;//192;  // 2 inches * 96dpi
+                                  //
+            Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format8bppIndexed );
+
+            DrawClaimCardPage( g, bmp, labelwidth, labelheight );
+
+        }
+
+        private void DrawClaimCardSetUp( Graphics g, Bitmap bmp )
+        {
+            int labelwidth = 195;  // 2.25 inches * 96dpi
+            int labelheight = 144;//192;  // 2 inches * 96dpi
+            DrawClaimCardPage( g, bmp, labelwidth, labelheight );
+
+        }
+
+        private void DrawAttendanceCardSetUp( Graphics g )
+        {            
+            int labelwidth = 195;  // 2.25 inches * 96dpi
+            int labelheight = 144;//192;  // 2 inches * 96dpi
+                                  //
+            Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format8bppIndexed );
+
+            DrawAttendanceLabelPage( g, bmp, labelwidth, labelheight );
+
+        }
+
+        private void DrawAttendanceCardSetUp( Graphics g, Bitmap bmp )
+        {
+            int labelwidth = 195;  // 2.25 inches * 96dpi
+            int labelheight = 144;//192;  // 2 inches * 96dpi
+            DrawAttendanceLabelPage( g, bmp, labelwidth, labelheight );
+
+        }
+
+        private void DrawNameTagSetUp( Graphics g )
+        {
+            int labelwidth = 216;  // 2.25 inches * 96dpi
+            int labelheight = 220;//192;  // 2 inches * 96dpi
+                                  //
+            Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format8bppIndexed );
+
+            DrawNameTag( g, bmp, labelwidth, labelheight );
+
+        }
+
+        private void DrawNameTagSetUp( Graphics g, Bitmap bmp )
+        {
+            int labelwidth = 216;  // 2.25 inches * 96dpi
+            int labelheight = 220;//192;  // 2 inches * 96dpi
+            DrawNameTag( g, bmp, labelwidth, labelheight );
+
+        }
+
+        /// <summary>
+        /// This is the event handler for printing only a Claim Card page.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DrawClaimCardPage( Graphics g, Bitmap bmp, int labelwidth, int labelheight )
 		{
-			// Create a Graphics object and add it to the
-			// document
+            // Create a Graphics object and add it to the
+            // document
 
-			int labelwidth = 195; //2.25 inches
-			int labelheight = 144; //2 inches
-			int xpos = 0; //temp x position placeholder
+            //int labelwidth = 195; //2.25 inches
+            //int labelheight = 144; //2 inches
+            //Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format24bppRgb );
+            //Graphics g = e.Graphics;
+
+            int xpos = 0; //temp x position placeholder
 			int ypos = 0;  //temp y position placeholder
-
-			Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format24bppRgb );
-
-			Graphics g = e.Graphics;
 
 			// Define the "brush" for printing
 			SolidBrush br = new SolidBrush( Color.Black );
@@ -533,24 +732,24 @@ namespace com.centralaz.CheckInLabels
 			/*******************************************************************/
 			/*Claim Card   Rotated Text (Security Code)                         */
 			/*******************************************************************/
-			int rotTextYpos = ypos + 43;  //set y position of rotated text
-			int rotTextXpos = 35;  //set x postion of rotated text
+			//int rotTextYpos = ypos + 43;  //set y position of rotated text
+			//int rotTextXpos = 35;  //set x postion of rotated text
 
-			//not really sure what this does
-			g.TranslateTransform( rotTextXpos, rotTextYpos );
-			//rotate the text -90 degrees
-			g.RotateTransform( -90 );
-			//fomrat the text
-			format.FormatFlags = StringFormatFlags.NoClip;
-			format.LineAlignment = StringAlignment.Center;
-			//Set text color back to black
-			br.Color = Color.Black;
-			//write the text
-			g.DrawString( this.SecurityToken.Substring( 0, 2 ), new Font( "Arial", 12 ), br, 0, 0, format );
-			//Reset the transform (thing i know nothing about)
-			g.ResetTransform();
+			////not really sure what this does
+			//g.TranslateTransform( rotTextXpos, rotTextYpos );
+			////rotate the text -90 degrees
+			//g.RotateTransform( -90 );
+			////fomrat the text
+			//format.FormatFlags = StringFormatFlags.NoClip;
+			//format.LineAlignment = StringAlignment.Center;
+			////Set text color back to black
+			//br.Color = Color.Black;
+			////write the text
+			//g.DrawString( this.SecurityToken.Substring( 0, 2 ), new Font( "Arial", 12 ), br, 0, 0, format );
+			////Reset the transform (thing i know nothing about)
+			//g.ResetTransform();
 
-			ypos -= 10; //adjust ypos height of the rotated text 
+			//ypos -= 10; //adjust ypos height of the rotated text 
 
 			/*******************************************************************/
 			/*Claim Card         [Security Token ]                             */
@@ -566,20 +765,24 @@ namespace com.centralaz.CheckInLabels
 
 			//draw white text over rectangle
 			Rf.X = 0;
-			Rf.Y = ypos + ( secbarheight / 2 );
-			//Set width of the position rectangle to the width variable
-			Rf.Width = labelwidth;
+            //Rf.Y = ypos + ( secbarheight / 2 );
+            Rf.Y = ypos;
+            //Set width of the position rectangle to the width variable
+            Rf.Width = labelwidth;
 
 			//set the alignment of the text 
 			format.Alignment = StringAlignment.Center;
 			//Set text color to white
 			br.Color = Color.White;
-			g.DrawString( this.SecurityToken.Substring( 2 ), new Font( "Arial Black", 18 ), br, Rf, format );
 
-			/*******************************************************************/
-			/*Claim Card                     Footer                            */
-			/*******************************************************************/
-			ypos += 65; //advance the y position to do more drawing
+            // Don't start in the middle of the code anymore
+            //g.DrawString( this.SecurityToken.Substring( 2 ), new Font( "Arial Black", 18 ), br, Rf, format );
+            g.DrawString( this.SecurityToken.Substring( 0 ), new Font( "Arial Black", 18 ), br, Rf, format );
+
+            /*******************************************************************/
+            /*Claim Card                     Footer                            */
+            /*******************************************************************/
+            ypos += 65; //advance the y position to do more drawing
 
 			Rf.X = 0;
 			//set new y position (move down for next text)
@@ -593,24 +796,26 @@ namespace com.centralaz.CheckInLabels
 
 		}
 
-		/// <summary>
-		/// This is the event handler for printing only the Attendance Label page.
-		/// </summary>
-		/// <param name="sender"></param>
-		/// <param name="e"></param>
-		private void pEvent_PrintAttendanceLabelPage( object sender, PrintPageEventArgs e )
+        
+
+        /// <summary>
+        /// This is the event handler for printing only the Attendance Label page.
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DrawAttendanceLabelPage( Graphics g, Bitmap bmp, int labelwidth, int labelheight )
 		{
-			// Create a Graphics object and add it to the
-			// document
+            // Create a Graphics object and add it to the
+            // document
 
-			int labelwidth = 195; //2.25 inches
-			int labelheight = 144; //2 inches
-			int xpos = 0; //temp x position placeholder
+            // This is all moved toe the Overloaded Setup
+            //int labelwidth = 195; //2.25 inches
+            //int labelheight = 144; //2 inches
+            //Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format24bppRgb );
+            //Graphics g = e.Graphics;
+
+            int xpos = 0; //temp x position placeholder
 			int ypos = 0;  //temp y position placeholder
-
-			Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format24bppRgb );
-
-			Graphics g = e.Graphics;
 
 			// Define the "brush" for printing
 			SolidBrush br = new SolidBrush( Color.Black );
@@ -712,24 +917,24 @@ namespace com.centralaz.CheckInLabels
 			/*******************************************************************/
 			/*Attendance  Rotated Text (Security Code)                         */
 			/*******************************************************************/
-			int rotTextYpos = ypos + 35;  //set y position of rotated text
-			int rotTextXpos = 35;  //set x postion of rotated text
+			//int rotTextYpos = ypos + 35;  //set y position of rotated text
+			//int rotTextXpos = 35;  //set x postion of rotated text
 
-			//not really sure what this does
-			g.TranslateTransform( rotTextXpos, rotTextYpos );
-			//rotate the text -90 degrees
-			g.RotateTransform( -90 );
-			//fomrat the text
-			format.FormatFlags = StringFormatFlags.NoClip;
-			format.LineAlignment = StringAlignment.Center;
-			//Set text color back to black
-			br.Color = Color.Black;
-			//write the text
-			g.DrawString( this.SecurityToken.Substring( 0, 2 ), new Font( "Arial", 12 ), br, 0, 0, format );
-			//Reset the transform (thing i know nothing about)
-			g.ResetTransform();
+			////not really sure what this does
+			//g.TranslateTransform( rotTextXpos, rotTextYpos );
+			////rotate the text -90 degrees
+			//g.RotateTransform( -90 );
+			////fomrat the text
+			//format.FormatFlags = StringFormatFlags.NoClip;
+			//format.LineAlignment = StringAlignment.Center;
+			////Set text color back to black
+			//br.Color = Color.Black;
+			////write the text
+			//g.DrawString( this.SecurityToken.Substring( 0, 2 ), new Font( "Arial", 12 ), br, 0, 0, format );
+			////Reset the transform (thing i know nothing about)
+			//g.ResetTransform();
 
-			ypos -= 10; //adjust ypos height of the rotated text 
+			//ypos -= 10; //adjust ypos height of the rotated text 
 
 			/*******************************************************************/
 			/*Attendance         [Security Token ]                             */
@@ -745,7 +950,8 @@ namespace com.centralaz.CheckInLabels
 
 			//draw white text over rectangle
 			Rf.X = 0;
-			Rf.Y = ypos + ( secbarheight / 2 );
+            //Rf.Y = ypos + ( secbarheight / 2 );
+            Rf.Y = ypos;
 			//Set width of the position rectangle to the width variable
 			Rf.Width = labelwidth;
 
@@ -753,7 +959,10 @@ namespace com.centralaz.CheckInLabels
 			format.Alignment = StringAlignment.Center;
 			//Set text color to white
 			br.Color = Color.White;
-			g.DrawString( this.SecurityToken.Substring( 2 ), new Font( "Arial Black", 18 ), br, Rf, format );
+
+            // 4/27/2026: Don't start in the middle of the code anymore
+            //g.DrawString( this.SecurityToken.Substring( 2 ), new Font( "Arial Black", 18 ), br, Rf, format );
+            g.DrawString( this.SecurityToken.Substring( 0 ), new Font( "Arial Black", 18 ), br, Rf, format );            
 
 			/* Required Y adjustment to add flags */
 			if ( this.HealthNoteFlag || this.LegalNoteFlag || this.SelfCheckOutFlag || this.EpiPenFlag )
@@ -859,11 +1068,11 @@ namespace com.centralaz.CheckInLabels
 			/*******************************************************************/
 			/*Attendance           Parents Initials Title                      */
 			/*******************************************************************/
-			ypos += allergybarheight + 25; //advance the y position to do more drawing
+			ypos += allergybarheight + 15; //advance the y position to do more drawing
 
-			Rf.X = 0;
+			Rf.X = 5;
 			//set new y position (move down for next text)
-			Rf.Y = ypos + 5;
+			Rf.Y = ypos;
 
 			//set the alignment
 			format.Alignment = StringAlignment.Near;
@@ -873,55 +1082,54 @@ namespace com.centralaz.CheckInLabels
 			g.DrawString( this.ParentsInitialsTitle, new Font( "Arial", 7 ), br, Rf, format );
 		}
 
-		/// <summary>
+
+        /// <summary>
 		/// This is the event handler for printing only the Nametag page.
 		/// </summary>
 		/// <param name="sender"></param>
 		/// <param name="e"></param>
-		private void pEvent_PrintNameTag( object sender, PrintPageEventArgs e )
-		{
-			int labelwidth = 216;  // 2.25 inches * 96dpi
-			int labelheight = 220;//192;  // 2 inches * 96dpi
+        private void DrawNameTag(Graphics g, Bitmap bmp, int labelwidth, int labelheight)
+        {
+            //int labelwidth = 216;  // 2.25 inches * 96dpi
+            //int labelheight = 220;//192;  // 2 inches * 96dpi
+            //Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format8bppIndexed );
+            ////Graphics g = Graphics.FromImage( bmp );
 
-			//String format used to center text on label
-			StringFormat format = new StringFormat();
-			// Define the "brush" for printing
-			SolidBrush br = new SolidBrush( Color.Black );
-			Rectangle rectangle = new Rectangle();
+            //String format used to center text on label
+            StringFormat format = new StringFormat();
+            // Define the "brush" for printing
+            SolidBrush br = new SolidBrush( Color.Black );
+            Rectangle rectangle = new Rectangle();
 
-			Bitmap bmp = new Bitmap( labelwidth, labelheight, PixelFormat.Format8bppIndexed );
+            // smothing mode on
+            g.SmoothingMode = SmoothingMode.AntiAlias;
 
-			Graphics g = e.Graphics;
+            /*******************************************************************/
+            /*                              Age Group                          */
+            /*******************************************************************/
 
-			// smothing mode on
-			g.SmoothingMode = SmoothingMode.AntiAlias;
+            //Set color to black
+            br.Color = Color.Black;
+            g.FillRectangle( br, 0, 0, labelwidth, 20 );
 
-			/*******************************************************************/
-			/*                              Age Group                          */
-			/*******************************************************************/
+            //draw white text over rectangle, starting at top and about 15 down
+            rectangle.X = 0;
+            rectangle.Y = 2;
+            //Set width of the position rectangle to the width variable
+            rectangle.Width = labelwidth;
 
-			//Set color to black
-			br.Color = Color.Black;
-			g.FillRectangle( br, 0, 0, labelwidth, 20 );
+            //set the alignment of the text 
+            format.Alignment = StringAlignment.Far;
 
-			//draw white text over rectangle, starting at top and about 15 down
-			rectangle.X = 0;
-			rectangle.Y = 2;
-			//Set width of the position rectangle to the width variable
-			rectangle.Width = labelwidth;
-
-			//set the alignment of the text 
-			format.Alignment = StringAlignment.Far;
-
-			//Set text color to white
-			br.Color = Color.White;
-			g.DrawString( this.AgeGroup, new Font( "Arial", 9, FontStyle.Bold ), br, rectangle, format );
+            //Set text color to white
+            br.Color = Color.White;
+            g.DrawString( this.AgeGroup, new Font( "Arial", 9, FontStyle.Bold ), br, rectangle, format );
 
             /*******************************************************************/
             /*                              RoomName                           */
             /*******************************************************************/
 
-		    //bool printRoomName;
+            //bool printRoomName;
             //
             //if (bool.TryParse(BlahBlahBlah.SomeSortOf.Settings["Cccev.DisplayRoomNameOnNameTag"], out printRoomName))
             //{
@@ -933,105 +1141,105 @@ namespace com.centralaz.CheckInLabels
             //    }
             //}
 
-		    /*******************************************************************/
-			/*                           FirstName                             */
-			/*******************************************************************/
-			br.Color = Color.Black;
+            /*******************************************************************/
+            /*                           FirstName                             */
+            /*******************************************************************/
+            br.Color = Color.Black;
 
-			//String format used to center text on label
-			format.Alignment = StringAlignment.Near;
+            //String format used to center text on label
+            format.Alignment = StringAlignment.Near;
 
-			//Set X Position to 0 (left) and Y position down a bit
-			rectangle.X = -5;
-			rectangle.Y = 20;
+            //Set X Position to 0 (left) and Y position down a bit
+            rectangle.X = -5;
+            rectangle.Y = 20;
 
-			// Set rectangle's width to width of label
-			rectangle.Width = labelwidth;
+            // Set rectangle's width to width of label
+            rectangle.Width = labelwidth;
 
-			string firstName = this.FirstName;
+            string firstName = this.FirstName;
 
-			// Resize based on the length of the person's firstname
-			int fontSize = 35; // size for names 4 chars in length or less
-			if ( 5 < this.FirstName.Length && this.FirstName.Length <= 7 )
-			{
-				rectangle.X = -3;
-				rectangle.Y = 30;
-				fontSize = 30;
-			}
-			else if ( 8 <= this.FirstName.Length && this.FirstName.Length <= 10 )
-			{
-				rectangle.X = 0;
-				rectangle.Y = 35;
-				fontSize = 25; //
-			}
-			else if ( 11 <= this.FirstName.Length )
-			{
-				rectangle.X = 2;
-				rectangle.Y = 40;
-				fontSize = 20; // max size
-				if ( firstName.Length >= 13 )
-					firstName = firstName.Substring( 0, 13 );
-			}
+            // Resize based on the length of the person's firstname
+            int fontSize = 35; // size for names 4 chars in length or less
+            if (5 < this.FirstName.Length && this.FirstName.Length <= 7)
+            {
+                rectangle.X = -3;
+                rectangle.Y = 30;
+                fontSize = 30;
+            }
+            else if (8 <= this.FirstName.Length && this.FirstName.Length <= 10)
+            {
+                rectangle.X = 0;
+                rectangle.Y = 35;
+                fontSize = 25; //
+            }
+            else if (11 <= this.FirstName.Length)
+            {
+                rectangle.X = 2;
+                rectangle.Y = 40;
+                fontSize = 20; // max size
+                if (firstName.Length >= 13)
+                    firstName = firstName.Substring( 0, 13 );
+            }
 
-			g.DrawString( firstName, new Font( "Arial", fontSize, FontStyle.Bold ), br, rectangle, format );
+            g.DrawString( firstName, new Font( "Arial", fontSize, FontStyle.Bold ), br, rectangle, format );
 
-			/*******************************************************************/
-			/*                           Lastname                              */
-			/*******************************************************************/
-			br.Color = Color.Black;
+            /*******************************************************************/
+            /*                           Lastname                              */
+            /*******************************************************************/
+            br.Color = Color.Black;
 
-			//String format used to center text on label
-			format.Alignment = StringAlignment.Near;
+            //String format used to center text on label
+            format.Alignment = StringAlignment.Near;
 
-			//Set X Position to 0 (left) and Y position down a bit
-			rectangle.X = 5;  // from left
-			rectangle.Y = 70; // from top
+            //Set X Position to 0 (left) and Y position down a bit
+            rectangle.X = 5;  // from left
+            rectangle.Y = 70; // from top
 
-			// Set rectangle's width to width of label
-			rectangle.Width = labelwidth;
+            // Set rectangle's width to width of label
+            rectangle.Width = labelwidth;
 
-			// Resize based on the length of the person's firstname
-			fontSize = 15;
-			if ( 16 <= this.LastName.Length )
-			{
-				fontSize = 10;
-			}
+            // Resize based on the length of the person's firstname
+            fontSize = 15;
+            if (16 <= this.LastName.Length)
+            {
+                fontSize = 10;
+            }
 
-			// 7/9/2007 Per Julie B and Steve H, don't print lastnames.
-			//g.DrawString(this.LastName, new Font("Arial", fontSize, FontStyle.Bold), br, rectangle, format);
+            // 7/9/2007 Per Julie B and Steve H, don't print lastnames.
+            //g.DrawString(this.LastName, new Font("Arial", fontSize, FontStyle.Bold), br, rectangle, format);
 
-			/*******************************************************************/
-			/* Health note, Self Check Out flag, Legal Note flag, Epi Pen flag */
-			/*******************************************************************/
-			rectangle.X = 82; // from left
-			rectangle.Y = 65; // from top
+            /*******************************************************************/
+            /* Health note, Self Check Out flag, Legal Note flag, Epi Pen flag */
+            /*******************************************************************/
+            rectangle.X = 62; // from left 
+            rectangle.Y = 95; // from top
 
-			format.Alignment = StringAlignment.Center;
-			string flags = "";
+            format.Alignment = StringAlignment.Center;
+            string flags = "";
 
-			if ( this.SelfCheckOutFlag )
-			{
-				flags = LabelSymbols.SelfCheckOutFlag;
-			}
+            if (this.SelfCheckOutFlag)
+            {
+                flags = LabelSymbols.SelfCheckOutFlag;
+            }
 
-			if ( this.LegalNoteFlag )
-			{
-				flags = flags + LabelSymbols.LegalNote;
-			}
+            if (this.LegalNoteFlag)
+            {
+                flags = flags + LabelSymbols.LegalNote;
+            }
 
-			if ( this.HealthNoteFlag )
-			{
-				flags = flags + LabelSymbols.HealthNote;
-			}
+            if (this.HealthNoteFlag)
+            {
+                flags = flags + LabelSymbols.HealthNote;
+            }
 
-			if ( this.EpiPenFlag )
-			{
-				flags = flags + LabelSymbols.EpiPenFlag;
-			}
+            if (this.EpiPenFlag)
+            {
+                flags = flags + LabelSymbols.EpiPenFlag;
+            }
 
             g.DrawString( flags, new Font( "Arial", 20, FontStyle.Bold ), br, rectangle, format );
 
-            if ( this.SpecialNeedsIntakeFlag )
+            if (this.SpecialNeedsIntakeFlag)
             {
                 var img = System.Drawing.Image.FromFile( this._InfoIconFile, true );
 
@@ -1043,64 +1251,120 @@ namespace com.centralaz.CheckInLabels
                 g.DrawImage( img, rect );
             }
 
+            if (this.PhotoFlag)
+            {
+                try {
+
+                    var img = System.Drawing.Image.FromFile( this._PhotoPermissionImageFile, true );
+                    // Define a rectangle to locate the graphic:
+                    // x,y ,width, height (where x,y is the coord of the upper left corner of the rectangle)
+                    RectangleF rect = new RectangleF( rectangle.X + 44, rectangle.Y + 10, 16.0F, 16.0F );
+
+                    // Add the image to the document
+                    g.DrawImage( img, rect );
+                }
+                catch (Exception e)
+                {
+                    var test = this._PhotoPermissionImageFile; //System.Drawing.Image.FromFile( this._PhotoPermissionImageFile, true );
+                    ExceptionLogService.LogException( e );
+                    throw new Exception( string.Format( "Failed attempting to find image with this path: '{1}'", test ) );
+
+                }
+                
+            }
+
             /*******************************************************************/
             /*                             Separator Line                      */
             /*******************************************************************/
 
             //Set color to black
             br.Color = Color.Black;
-			g.FillRectangle( br, 0, 95, labelwidth, 1 );
+            g.FillRectangle( br, 0, 95, labelwidth, 1 );
 
-			/*******************************************************************/
-			/*                             Birthday Cake or Logo               */
-			/*******************************************************************/
-			// Try to process the images, but don't die if unable to find them
-			try
-			{
-				System.Drawing.Image img;
-				// Load a graphic from a file...
-				// based on whether it is the person's birthday this week.
-				// BUG FIX: #466 http://redmine.refreshcache.com/issues/466
-				var nextBirthday = this.BirthdayDate.AddYears( DateTime.Today.Year - this.BirthdayDate.Year );
-				if ( nextBirthday < DateTime.Today )
-				{
-					nextBirthday = nextBirthday.AddYears( 1 );
-				}
-				var numDays = ( nextBirthday - DateTime.Today ).Days;
-				if ( this.BirthdayDate != DateTime.MinValue && numDays <= 7 )
-				{
-					img = System.Drawing.Image.FromFile( this._BirthdayImageFile, true );
+            /*******************************************************************/
+            /*Name Tag         [Security Token ]                             */
+            /*******************************************************************/
+            //draw black rectangle
 
-					// determine which day of the week the birthday falls on this year:
-					string dowBirthdayThisYear = new DateTime( DateTime.Now.Year, this.BirthdayDate.Month, this.BirthdayDate.Day ).DayOfWeek.ToString();
-					if ( numDays == 0 )
-					{
-						dowBirthdayThisYear = "Today!";
-					}
-					// write the DayOfWeek that the birthday occurs under the image
-					br.Color = Color.Black;
-					format.Alignment = StringAlignment.Center;
-					RectangleF dayOfWeekRect = new RectangleF( 130.0F, 173.0F, 56.0F, 13.0F );
-					g.DrawString( dowBirthdayThisYear, new Font( "Arial", 7 ), br, dayOfWeekRect, format );
-				}
-				else
-				{
-					img = System.Drawing.Image.FromFile( this._LogoImageFile, true );
-				}
+            int secbarheight = 30; //Black Security Bar Height
+            int secbarwidth = 100; //Black Security Bar width            
 
-				// Define a rectangle to locate the graphic:
-				// x,y ,width, height (where x,y is the coord of the upper left corner of the rectangle)
-				RectangleF rect = new RectangleF( 130.0F, 115.0F, 56.0F, 56.0F );
+            var xpos = ((labelwidth / 2) - (secbarwidth + 10 ));//center x position of rectangle
+            var ypos = (rectangle.Y + 10);  //set y pos of rectangle
+            g.FillRectangle( br, xpos, ypos, secbarwidth, secbarheight );
 
-				// Add the image to the document
-				g.DrawImage( img, rect );
-			}
-			catch { }
+            //Alignment / placement rectangle used to place all	text 
+            Rectangle Rf = new Rectangle();
 
-		}
+            //draw white text over rectangle
+            Rf.X = 15;
+            Rf.Y = ypos;
+            //Set width of the position rectangle to the width variable
+            Rf.Width = labelwidth;
 
-		#endregion
-	}
+            //set the alignment of the text 
+            format.Alignment = StringAlignment.Near;
+            //Set text color to white
+            br.Color = Color.White;
+
+            // Don't start in the middle of the code anymore
+            //g.DrawString( this.SecurityToken.Substring( 2 ), new Font( "Arial Black", 18 ), br, Rf, format );
+            g.DrawString( this.SecurityToken.Substring( 0 ), new Font( "Arial Black", 18 ), br, Rf, format );
+
+            /*******************************************************************/
+            /*                             Birthday Cake or Logo               */
+            /*******************************************************************/
+            // Try to process the images, but don't die if unable to find them
+            try
+            {
+                System.Drawing.Image img;
+                // Load a graphic from a file...
+                // based on whether it is the person's birthday this week.
+                // BUG FIX: #466 http://redmine.refreshcache.com/issues/466
+                var nextBirthday = this.BirthdayDate.AddYears( DateTime.Today.Year - this.BirthdayDate.Year );
+                if (nextBirthday < DateTime.Today)
+                {
+                    nextBirthday = nextBirthday.AddYears( 1 );
+                }
+                var numDays = (nextBirthday - DateTime.Today).Days;
+                if (this.BirthdayDate != DateTime.MinValue && numDays <= 7)
+                {
+                    img = System.Drawing.Image.FromFile( this._BirthdayImageFile, true );
+
+                    // determine which day of the week the birthday falls on this year:
+                    string dowBirthdayThisYear = new DateTime( DateTime.Now.Year, this.BirthdayDate.Month, this.BirthdayDate.Day ).DayOfWeek.ToString();
+                    if (numDays == 0)
+                    {
+                        dowBirthdayThisYear = "Today!";
+                    }
+                    // write the DayOfWeek that the birthday occurs under the image
+                    br.Color = Color.Black;
+                    format.Alignment = StringAlignment.Center;
+                    RectangleF dayOfWeekRect = new RectangleF( 130.0F, 173.0F, 56.0F, 13.0F );
+                    g.DrawString( dowBirthdayThisYear, new Font( "Arial", 7 ), br, dayOfWeekRect, format );
+
+                    // Define a rectangle to locate the graphic:
+                    // x,y ,width, height (where x,y is the coord of the upper left corner of the rectangle)
+                    RectangleF rect = new RectangleF( 130.0F, 130.0F, 56.0F, 56.0F );
+
+                    // Add the image to the document
+                    g.DrawImage( img, rect );
+                }
+                //else
+                //{
+                //    img = System.Drawing.Image.FromFile( this._LogoImageFile, true );
+                //}
+
+                
+
+                
+            }
+            catch { }
+            //return g;
+        }
+
+        #endregion
+    }
 
 	public static class LabelSymbols
 	{

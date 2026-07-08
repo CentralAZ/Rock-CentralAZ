@@ -187,14 +187,14 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
             }
 
             mergeObjects.Add( "Person", checkinPerson.Person );
-            CheckInLabel checkinLabel = new CheckInLabel( labelCache, mergeObjects );
+            Rock.CheckIn.CheckInLabel checkinLabel = new Rock.CheckIn.CheckInLabel( labelCache, mergeObjects );
 
             checkinLabel.FileGuid = label.Value.AsGuid();
             checkinLabel.PrinterAddress = device.IPAddress;
             checkinLabel.PrinterDeviceId = device.Id;
             checkinLabel.PrintFrom = PrintFrom.Server;
 
-            List<CheckInLabel> labels = new List<CheckInLabel>();
+            List<Rock.CheckIn.CheckInLabel> labels = new List<Rock.CheckIn.CheckInLabel>();
             labels.Add( checkinLabel );
 
             checkinGroupType.Labels = labels;
@@ -267,7 +267,7 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// <param name="person">The person.</param>
         /// <param name="groupType">Type of the group.</param>
         /// <param name="printFromServer">The print from server.</param>
-        private void PrintFromServerLabels( CheckInPerson person, CheckInGroupType groupType, IEnumerable<CheckInLabel> printFromServer )
+        private void PrintFromServerLabels( CheckInPerson person, CheckInGroupType groupType, IEnumerable<Rock.CheckIn.CheckInLabel> printFromServer )
         {
             Socket socket = null;
             bool hasCutter = true;
@@ -421,7 +421,7 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// <param name="checkInState">State of the check in.</param>
         /// <param name="person">The person.</param>
         /// <param name="groupType">Type of the group.</param>
-        private void LoadPrintLabelAndPrint( string assemblyString, CheckInLabel label, CheckInState checkInState, CheckInPerson person, CheckInGroupType groupType )
+        private void LoadPrintLabelAndPrint( string assemblyString, Rock.CheckIn.CheckInLabel label, CheckInState checkInState, CheckInPerson person, CheckInGroupType groupType )
         {
             // Use only the first line
             string line1 = assemblyString.Split( new[] { '\r', '\n' } ).FirstOrDefault();

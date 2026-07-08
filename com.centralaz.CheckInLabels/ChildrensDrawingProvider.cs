@@ -17,7 +17,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Text;
 using System.Web;
 using Rock;
@@ -25,6 +24,11 @@ using Rock.CheckIn;
 using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
+
+using System.Drawing;
+using System.Drawing.Imaging;
+using Rock.Address;
+
 
 namespace com.centralaz.CheckInLabels
 {
@@ -46,63 +50,37 @@ namespace com.centralaz.CheckInLabels
     /// * SelfCheckOutFlag
     /// * LegalNote
     /// </summary>
-    /// <seealso cref="com.centralaz.CheckInLabels.IPrintLabel" />
-    internal class ChildrensLabelProvider : IPrintLabel
+    /// <seealso cref="com.centralaz.CheckInLabels.IDrawLabel" />
+    internal class ChildrensDrawingProvider : IDrawLabel
     {
         private RockContext rockContext = new RockContext();
         private ChildrenLabelSet label;
 
-        public ChildrensLabelProvider()
+        public ChildrensDrawingProvider()
         {
         }
 
         /// <summary>
         /// IPrintLabel implementation to print out name tags.
         /// </summary>
-        public void Print( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType )
+        //public Graphics Draw( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType)
+        //public void Draw( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType, Graphics g )
+        public List<Bitmap> Draw( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType)
         {
-            //location = new Location( occurrences.First().LocationID );
-            //InitLabel( person, checkInState );
-
-            //OccurrenceTypeReportCollection reports = new OccurrenceTypeReportCollection( occurrences.First().OccurrenceTypeID );
-            //var report = reports.OfType<OccurrenceTypeReport>().FirstOrDefault();
-
-            //if ( ( report != null && report.UseDefaultPrinter && kiosk.Printer != null ) ||
-            //    location.Printer.PrinterName.Equals( "[Kiosk]", StringComparison.CurrentCultureIgnoreCase ) )
-            //{
-            //    label.PrintAllLabels( kiosk.Printer.PrinterName );
-            //}
-            //else
-            //{
-            //    label.PrintAllLabels( location.Printer.PrinterName );
-            //}
-
-            IEnumerable<Rock.CheckIn.CheckInLabel> printFromServer = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Server );
-            if (printFromServer.Any())
-            {
-                string printerAddress = string.Empty;
-
-                foreach (var label in printFromServer)
-                {
-                    var labelCache = KioskLabel.Get( label.FileGuid );
-                    if (labelCache != null)
-                    {
-                        if (!string.IsNullOrWhiteSpace( label.PrinterAddress ))
-                        {
-                            printerAddress = label.PrinterAddress;
-                            break;
-                        }
-                    }
-                }
-
-                if (!string.IsNullOrWhiteSpace( printerAddress ))
-                {
-                    InitLabel( checkInLabel, person, checkInState, groupType );
-                    label.PrintAllLabels( printerAddress );
-                }
-
-            }
             
+            //Graphics g = null;
+
+                IEnumerable <Rock.CheckIn.CheckInLabel> printFromServer = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Server );
+            //if ( printFromServer.Any() )
+            //{
+                
+                    InitLabel( checkInLabel, person, checkInState, groupType );
+                    
+                
+            //}
+
+            return label.DrawAllLabels();
+            //return g;
 
         }
 
@@ -125,6 +103,7 @@ namespace com.centralaz.CheckInLabels
 
             label.AttendanceLabelTitle = checkInLabel.MergeFields.ContainsKey( "CentralAZ.AttendanceLabelTitle" ) ? checkInLabel.MergeFields["CentralAZ.AttendanceLabelTitle"] : string.Empty;
             label.BirthdayImageFile = checkInLabel.MergeFields.ContainsKey( "CentralAZ.BirthdayImageFile" ) ? checkInLabel.MergeFields["CentralAZ.BirthdayImageFile"] : string.Empty;
+            //label.BirthdayImageFile = "C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\cake2.bmp";
             label.Footer = checkInLabel.MergeFields.ContainsKey( "CentralAZ.ClaimCardFooter" ) ? checkInLabel.MergeFields["CentralAZ.ClaimCardFooter"] : string.Empty;
             label.ClaimCardTitle = checkInLabel.MergeFields.ContainsKey( "CentralAZ.ClaimCardTitle" ) ? checkInLabel.MergeFields["CentralAZ.ClaimCardTitle"] : string.Empty;
             label.HealthNotesTitle = checkInLabel.MergeFields.ContainsKey( "CentralAZ.HealthNotesTitle" ) ? checkInLabel.MergeFields["CentralAZ.HealthNotesTitle"] : string.Empty;
@@ -166,26 +145,13 @@ namespace com.centralaz.CheckInLabels
             label.PhotoFlag = checkInLabel.MergeFields.ContainsKey( "PhotoFlag" ) ? Convert.ToBoolean( checkInLabel.MergeFields["PhotoFlag"] ) : false;
             label.PhotoPermissionImageFile = checkInLabel.MergeFields.ContainsKey( "PhotoPermissionFile" ) ? checkInLabel.MergeFields["PhotoPermissionFile"] : string.Empty;
 
-            label.SpecialNeedsIntakeFlag = checkInLabel.MergeFields.ContainsKey( "SpecialNeedsIntakeFlag" ) ? Convert.ToBoolean(checkInLabel.MergeFields["SpecialNeedsIntakeFlag"]) : false;
+            //label.InfoIconFile = "C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\PhotoPermission4.bmp";
+            label.SpecialNeedsIntakeFlag = checkInLabel.MergeFields.ContainsKey( "SpecialNeedsIntakeFlag" ) ? Convert.ToBoolean(checkInLabel.MergeFields["SpecialNeedsIntakeFlag"]) : false;      
             label.InfoIconFile = checkInLabel.MergeFields.ContainsKey( "InfoIconFile" ) ? checkInLabel.MergeFields["InfoIconFile"] : string.Empty;
+            //label.InfoIconFile = "C:\\Users\\kate\\source\\com_9embers\\Plugins\\v16.13\\Rock\\RockWeb\\Content\\InternalSite\\Check-in\\info.bmp";
             label.EpiPenFlag = checkInLabel.MergeFields.ContainsKey( "EpiPenFlag" ) ? Convert.ToBoolean( checkInLabel.MergeFields["EpiPenFlag"]) : false;
-            try
-            {
-                
-                label.SelfCheckOutFlag = checkInLabel.MergeFields.ContainsKey( "SelfCheckOutFlag" ) ? Convert.ToBoolean( checkInLabel.MergeFields["SelfCheckOutFlag"]) : false;
-            }
-            catch (Exception e)
-            {
-                var SelfCheckFlag = checkInLabel.MergeFields.ContainsKey( "SelfCheckOutFlag" ) ? Convert.ToBoolean( checkInLabel.MergeFields["SelfCheckOutFlag"] ) : false;
-                ExceptionLogService.LogException( e );
-                throw new Exception( string.Format( "Failed attempting to retrieve value for SelfCheckoutFlag: '{1}'", SelfCheckFlag ) );
-
-            }
-        
-
-
-                
-                label.LegalNoteFlag = checkInLabel.MergeFields.ContainsKey( "LegalNote" ) && !string.IsNullOrWhiteSpace( checkInLabel.MergeFields["LegalNote"] ) ? true : false;
+            label.SelfCheckOutFlag = checkInLabel.MergeFields.ContainsKey( "SelfCheckOutFlag" ) ? Convert.ToBoolean( checkInLabel.MergeFields["SelfCheckOutFlag"]) : false;
+            label.LegalNoteFlag = checkInLabel.MergeFields.ContainsKey( "LegalNote" ) && !string.IsNullOrWhiteSpace( checkInLabel.MergeFields["LegalNote"] ) ? true : false;
         }
 
         /// <summary>

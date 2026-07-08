@@ -16,9 +16,11 @@
 //
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Reflection;
 
 using Rock;
+using Rock.Address;
 using Rock.CheckIn;
 //using Rock.Model;
 using Rock.Web.Cache;
@@ -28,16 +30,18 @@ using Rock.Web.Cache;
 /// </summary>
 namespace com.centralaz.CheckInLabels
 {
-    public interface IPrintLabel
+    public interface IDrawLabel
     {
         //void Print(FamilyMember person, IEnumerable<Occurrence> occurrences, OccurrenceAttendance attendance, ComputerSystem kiosk);
-        void Print( CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType checkInGroupType );
-        
+        //Graphics Draw( CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType checkInGroupType );
+        //void Draw( CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType checkInGroupType, Graphics g );
+        List<Bitmap> Draw( CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType checkInGroupType);
+
     }
 
-    public static class PrintLabelHelper
+    public static class DrawLabelHelper
     {
-        public static IPrintLabel GetPrintLabelClass( string assemblyName, string assemblyClass )
+        public static IDrawLabel GetDrawLabelClass( string assemblyName, string assemblyClass )
         {
             Assembly assembly = Assembly.Load( assemblyName );
 
@@ -53,7 +57,7 @@ namespace com.centralaz.CheckInLabels
                 throw new Exception( string.Format( "Could not find '{0}' class in '{1}' assembly.", assemblyClass, assemblyName ) );
             }
 
-            return (IPrintLabel)Activator.CreateInstance( type );
+            return (IDrawLabel)Activator.CreateInstance( type );
         }
     }
 }

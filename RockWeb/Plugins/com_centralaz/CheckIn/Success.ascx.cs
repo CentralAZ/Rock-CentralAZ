@@ -14,9 +14,13 @@
 // limitations under the License.
 // </copyright>
 //
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -36,94 +40,104 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
     /// <summary>
     /// 
     /// </summary>
-    [DisplayName( "Success" )]
-    [Category( "com_centralaz > Check-in" )]
-    [Description( "Displays the details of a successful checkin." )]
-    [LinkedPage( "Person Select Page" )]
+    [DisplayName("Success")]
+    [Category("com_centralaz > Check-in")]
+    [Description("Displays the details of a successful checkin.")]
+    [LinkedPage("Person Select Page")]
     public partial class Success : CheckInBlock
     {
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Init" /> event.
         /// </summary>
         /// <param name="e">An <see cref="T:System.EventArgs" /> object that contains the event data.</param>
-        protected override void OnInit( EventArgs e )
+        protected override void OnInit(EventArgs e)
         {
-            base.OnInit( e );
+            base.OnInit(e);
 
-            RockPage.AddScriptLink( "~/Scripts/CheckinClient/cordova-2.4.0.js", false );
-            RockPage.AddScriptLink( "~/Scripts/CheckinClient/ZebraPrint.js" );
+            RockPage.AddScriptLink("~/Scripts/CheckinClient/cordova-2.4.0.js", false);
+            RockPage.AddScriptLink("~/Scripts/CheckinClient/ZebraPrint.js");
 
-            RockPage.AddScriptLink( "~/Scripts/iscroll.js" );
-            RockPage.AddScriptLink( "~/Scripts/CheckinClient/checkin-core.js" );
-            RockPage.AddScriptLink( "~/Plugins/com_centralaz/CheckIn/Scripts/checkin-core.js" );
+            RockPage.AddScriptLink("~/Scripts/iscroll.js");
+            RockPage.AddScriptLink("~/Scripts/CheckinClient/checkin-core.js");
+            RockPage.AddScriptLink("~/Plugins/com_centralaz/CheckIn/Scripts/checkin-core.js");
         }
 
         /// <summary>
         /// Raises the <see cref="E:System.Web.UI.Control.Load" /> event.
         /// </summary>
         /// <param name="e">The <see cref="T:System.EventArgs" /> object that contains the event data.</param>
-        protected override void OnLoad( EventArgs e )
+        protected override void OnLoad(EventArgs e)
         {
-            base.OnLoad( e );
+            base.OnLoad(e);
 
-            if ( CurrentWorkflow == null || CurrentCheckInState == null )
+            if (CurrentWorkflow == null || CurrentCheckInState == null)
             {
                 NavigateToHomePage();
             }
             else
             {
-                if ( !Page.IsPostBack )
+                if (!Page.IsPostBack)
                 {
                     try
                     {
+
                         // Print the labels
-                        foreach ( var family in CurrentCheckInState.CheckIn.Families.Where( f => f.Selected ) )
+                        foreach (var family in CurrentCheckInState.CheckIn.Families.Where(f => f.Selected))
                         {
                             lbAnother.Visible =
                                 CurrentCheckInState.CheckInType.TypeOfCheckin == TypeOfCheckin.Individual &&
                                 family.People.Count > 1;
-                            
-                            foreach ( var person in family.GetPeople( true ) )
-                            {
-                                foreach ( var groupType in person.GetGroupTypes( true ) )
-                                {
-                                    foreach ( var group in groupType.GetGroups( true ) )
-                                    {
-                                        foreach ( var location in group.GetLocations( true ) )
-                                        {
-                                            foreach ( var schedule in location.GetSchedules( true ) )
-                                            {
-                                                var li = new HtmlGenericControl( "li" );
-                                                li.InnerText = string.Format( "{0} : {2} at {3}",
-                                                    person.ToString(), group.ToString(), location.ToString(), schedule.ToString(), person.SecurityCode );
 
-                                                phResults.Controls.Add( li );
+                            foreach (var person in family.GetPeople(true))
+                            {
+                                foreach (var groupType in person.GetGroupTypes(true))
+                                {
+                                    phResults.Controls.Add(new LiteralControl("<br/>Sort through all the checkin entities and start tring to print labels by group type"));
+                                    foreach (var group in groupType.GetGroups(true))
+                                    {
+                                        foreach (var location in group.GetLocations(true))
+                                        {
+                                            foreach (var schedule in location.GetSchedules(true))
+                                            {
+                                                var li = new HtmlGenericControl("li");
+                                                li.InnerText = string.Format("{0} : {2} at {3}",
+                                                    person.ToString(), group.ToString(), location.ToString(), schedule.ToString(), person.SecurityCode);
+
+                                                phResults.Controls.Add(li);
                                             }
                                         }
                                     }
 
+                                    phResults.Controls.Add(new LiteralControl("<br/>For each group type's set of labels, check if they print from the client or the server"));
                                     try
                                     {
-                                        var printFromClient = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Client ).OrderBy( l => l.Order );
-                                        if ( printFromClient.Any() )
+                                        var printFromClient = groupType.Labels.Where(l => l.PrintFrom == Rock.Model.PrintFrom.Client).OrderBy(l => l.Order);
+                                        var pfcString = printFromClient.ToJson();
+                                        phResults.Controls.Add(new LiteralControl("<br/>Checking for labels to print from client." + pfcString));
+                                        if (printFromClient.Any())
                                         {
-                                            var urlRoot = string.Format( "{0}://{1}", Request.Url.Scheme, Request.Url.Authority );
-                                            printFromClient.ToList().ForEach( l => l.LabelFile = urlRoot + l.LabelFile );
-                                            AddLabelScript( printFromClient.ToJson() );
+                                            phResults.Controls.Add(new LiteralControl("<br/>Print from client labels detected."));
+                                            var urlRoot = string.Format("{0}://{1}", Request.Url.Scheme, Request.Url.Authority);
+                                            printFromClient.ToList().ForEach(l => l.LabelFile = urlRoot + l.LabelFile);
+                                            AddLabelScript(printFromClient.ToJson());
                                         }
 
-                                        var printFromServer = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Server ).OrderBy( l => l.Order );
-                                        if ( printFromServer.Any() )
+                                        var printFromServer = groupType.Labels.Where(l => l.PrintFrom == Rock.Model.PrintFrom.Server).OrderBy(l => l.Order);
+                                        var pfsString = printFromServer.Any();
+                                        phResults.Controls.Add(new LiteralControl("<br/>Checking for labels to print from server: " + pfsString));
+                                        if (printFromServer.Any())
                                         {
-                                            PrintFromServerLabels( person, groupType, printFromServer );
+                                            phResults.Controls.Add(new LiteralControl("<br/>Print from server labels detected."));
+                                            PrintFromServerLabels(person, groupType, printFromServer);
                                         }
                                     }
-                                    catch ( Exception ex )
+                                    catch (Exception ex)
                                     {
-                                        phResults.Controls.Add( new LiteralControl( string.Format( "<br/><span class='text-danger '>Could not connect to printer! {0}</span>", ex.Message ) ) );
+
+                                        phResults.Controls.Add(new LiteralControl(string.Format("<br/><span class='text-danger '>Could not connect to printer! {0}</span>", ex.Message)));
 
                                         // Problem printing person's labels.
-                                        LogException( ex );
+                                        LogException(ex);
                                     }
                                 }
                             }
@@ -146,13 +160,14 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
 
 
                     }
-                    catch ( Exception ex )
+                    catch (Exception ex)
                     {
-                        LogException( ex );
+                        LogException(ex);
                     }
                 }
             }
         }
+
 
         /// <summary>
         /// Prints the labels that are the "from server" ones.
@@ -160,100 +175,162 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// <param name="person">The person.</param>
         /// <param name="groupType">Type of the group.</param>
         /// <param name="printFromServer">The print from server.</param>
-        private void PrintFromServerLabels( CheckInPerson person, CheckInGroupType groupType, IEnumerable<CheckInLabel> printFromServer )
+        private void DrawFromServerLabels(CheckInPerson person, CheckInGroupType groupType, IEnumerable<CheckInLabel> printFromServer)
+        {
+
+            int numOfLabels = printFromServer.Count();
+            int labelIndex = 0;
+            foreach (var label in printFromServer.OrderBy(l => l.Order))
+            {
+                labelIndex++;
+                var labelCache = KioskLabel.Get(label.FileGuid);
+
+                // There is no printer set up to print from server, so print to the page instead
+                string printContent = labelCache.FileContent;
+                // This is documented in <\IT\Projects\Rock RMS\CustomProjects\Check-in\Rock Central Check-in Setup and Design.docx>
+                if (printContent.StartsWith("Assembly:"))
+                {
+                    // New Method Here
+                    LoadPrintLabelAndDraw(printContent, label, CurrentCheckInState, person, groupType);
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Prints the labels that are the "from server" ones.
+        /// </summary>
+        /// <param name="person">The person.</param>
+        /// <param name="groupType">Type of the group.</param>
+        /// <param name="printFromServer">The print from server.</param>
+        private void PrintFromServerLabels(CheckInPerson person, CheckInGroupType groupType, IEnumerable<CheckInLabel> printFromServer)
         {
             Socket socket = null;
             bool hasCutter = true;
             string currentIp = string.Empty;
             int numOfLabels = printFromServer.Count();
             int labelIndex = 0;
-            foreach ( var label in printFromServer.OrderBy( l => l.Order ) )
+            foreach (var label in printFromServer.OrderBy(l => l.Order))
             {
+                phResults.Controls.Add(new LiteralControl("<br/>Run through the labels to print."));
                 labelIndex++;
-                var labelCache = KioskLabel.Get( label.FileGuid );
-                if ( labelCache != null )
+                var labelCache = KioskLabel.Get(label.FileGuid);
+                if (labelCache != null)
                 {
-                    if ( !string.IsNullOrWhiteSpace( label.PrinterAddress ) )
+                    phResults.Controls.Add(new LiteralControl("<br/>Check to see if the Printer Address exists."));
+                    phResults.Controls.Add(new LiteralControl(string.Format("<br/>Printer Address: {0}", label.PrinterAddress)));
+                    if (!string.IsNullOrWhiteSpace(label.PrinterAddress))
                     {
-                        if ( label.PrinterAddress != currentIp )
+                        phResults.Controls.Add(new LiteralControl("<br/>Check to see if the Printer Address is empty."));
+                        if (label.PrinterAddress != currentIp)
                         {
-                            if ( socket != null && socket.Connected )
+                            if (socket != null && socket.Connected)
                             {
-                                socket.Shutdown( SocketShutdown.Both );
+                                socket.Shutdown(SocketShutdown.Both);
                                 socket.Close();
                             }
 
                             currentIp = label.PrinterAddress;
-                            var printerIp = new IPEndPoint( IPAddress.Parse( currentIp ), 9100 );
+                            var printerIp = new IPEndPoint(IPAddress.Parse(currentIp), 9100);
+                            phResults.Controls.Add(new LiteralControl(string.Format("<br/>Printer IpEndpoint: {0}", printerIp)));
                             var deviceId = label.PrinterDeviceId;
-                            hasCutter = GetPrinterCutterOption( deviceId );
- 
-                            socket = new Socket( AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp );
-                            IAsyncResult result = socket.BeginConnect( printerIp, null, null );
-                            bool success = result.AsyncWaitHandle.WaitOne( 5000, true );
+                            phResults.Controls.Add(new LiteralControl(string.Format("<br/>Printer Device Id: {0}", deviceId)));
+                            hasCutter = GetPrinterCutterOption(deviceId);
+
+                            phResults.Controls.Add(new LiteralControl("<br/>Create a new socket."));
+                            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                            IAsyncResult result = socket.BeginConnect(printerIp, null, null);
+                            bool success = result.AsyncWaitHandle.WaitOne(5000, true);
+                            phResults.Controls.Add(new LiteralControl(string.Format("<br/>Socket success status: {0}", success)));
                         }
 
+                        phResults.Controls.Add(new LiteralControl("<br/>Get the printContent."));
                         string printContent = labelCache.FileContent;
                         // This is documented in <\IT\Projects\Rock RMS\CustomProjects\Check-in\Rock Central Check-in Setup and Design.docx>
-                        if ( printContent.StartsWith( "Assembly:" ) )
+                        phResults.Controls.Add(new LiteralControl("<br/>Check to see if its a c# label"));
+                        if (printContent.StartsWith("Assembly:"))
                         {
-                            if ( socket != null && socket.Connected )
+
+                            if (socket != null && socket.Connected)
                             {
-                                socket.Shutdown( SocketShutdown.Both );
+                                socket.Shutdown(SocketShutdown.Both);
                                 socket.Close();
                             }
-                            LoadPrintLabelAndPrint( printContent, label, CurrentCheckInState, person, groupType );
+                            phResults.Controls.Add(new LiteralControl("<br/>Handle c# label now."));
+                            LoadPrintLabelAndPrint(printContent, label, CurrentCheckInState, person, groupType);
                         }
                         else
                         {
-                            foreach ( var mergeField in label.MergeFields )
+                            phResults.Controls.Add(new LiteralControl("<br/>Not a c# label, so resolve the merge fields"));
+                            foreach (var mergeField in label.MergeFields)
                             {
-                                if ( !string.IsNullOrWhiteSpace( mergeField.Value ) )
+                                if (!string.IsNullOrWhiteSpace(mergeField.Value))
                                 {
-                                    printContent = Regex.Replace( printContent, string.Format( @"(?<=\^FD){0}(?=\^FS)", mergeField.Key ), ZebraFormatString( mergeField.Value ) );
+                                    printContent = Regex.Replace(printContent, string.Format(@"(?<=\^FD){0}(?=\^FS)", mergeField.Key), ZebraFormatString(mergeField.Value));
                                 }
                                 else
                                 {
                                     // Remove the box preceding merge field
-                                    printContent = Regex.Replace( printContent, string.Format( @"\^FO.*\^FS\s*(?=\^FT.*\^FD{0}\^FS)", mergeField.Key ), string.Empty );
+                                    printContent = Regex.Replace(printContent, string.Format(@"\^FO.*\^FS\s*(?=\^FT.*\^FD{0}\^FS)", mergeField.Key), string.Empty);
                                     // Remove the merge field
-                                    printContent = Regex.Replace( printContent, string.Format( @"\^FD{0}\^FS", mergeField.Key ), "^FD^FS" );
+                                    printContent = Regex.Replace(printContent, string.Format(@"\^FD{0}\^FS", mergeField.Key), "^FD^FS");
                                 }
                             }
 
                             // Inject the cut command on the last label (if the printer is has a cutter)
                             // otherwise supress the backfeed (^XB)
-                            if ( labelIndex == numOfLabels && hasCutter )
+                            if (labelIndex == numOfLabels && hasCutter)
                             {
-                                printContent = Regex.Replace( printContent.Trim(), @"\" + @"^PQ1,0,1,Y", string.Empty );
-                                printContent = Regex.Replace( printContent.Trim(), @"\" + @"^MMT", @"^MMC" );
+                                printContent = Regex.Replace(printContent.Trim(), @"\" + @"^PQ1,0,1,Y", string.Empty);
+                                printContent = Regex.Replace(printContent.Trim(), @"\" + @"^MMT", @"^MMC");
                             }
                             else
                             {
-                                printContent = Regex.Replace( printContent.Trim(), @"\" + @"^XZ$", @"^XB^XZ" );
+                                printContent = Regex.Replace(printContent.Trim(), @"\" + @"^XZ$", @"^XB^XZ");
                             }
 
-                            if ( socket.Connected )
+                            phResults.Controls.Add(new LiteralControl("<br/>Try to get the bytes together with the socket"));
+                            if (socket.Connected)
                             {
-                                var ns = new NetworkStream( socket );
-                                byte[] toSend = System.Text.Encoding.ASCII.GetBytes( printContent );
-                                ns.Write( toSend, 0, toSend.Length );
+                                var ns = new NetworkStream(socket);
+                                byte[] toSend = System.Text.Encoding.ASCII.GetBytes(printContent);
+                                ns.Write(toSend, 0, toSend.Length);
                             }
                             else
                             {
-                                phResults.Controls.Add( new LiteralControl( "<br/>NOTE: Could not connect to printer!" ) );
+                                phResults.Controls.Add(new LiteralControl("<br/>NOTE: Could not connect to printer!"));
                             }
                         }
+
+
                     }
-                } // labelCache != null
+                    //If all else fails, print the labels to the screen
+                    else
+                    {
+
+                        //throw new Exception("The printer address was empty");
+
+                        ////Try to draw the label to the screen.
+                        var printFS = groupType.Labels.Where(l => l.PrintFrom == Rock.Model.PrintFrom.Server).OrderBy(l => l.Order);
+                        if (printFS.Any())
+                        {
+                            DrawFromServerLabels(person, groupType, printFS);
+                        }
+
+                    }
+                }
+
+                // labelCache != null
             }
 
-            if ( socket != null && socket.Connected )
+            if (socket != null && socket.Connected)
             {
-                socket.Shutdown( SocketShutdown.Both );
+                socket.Shutdown(SocketShutdown.Both);
                 socket.Close();
             }
         }
+
+
 
         /// <summary>
         /// Gets the printer cutter option from either a "HasCutter" (boolean) attribute
@@ -261,19 +338,19 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// </summary>
         /// <param name="deviceId">The device identifier.</param>
         /// <returns>true if printer has a cutter; false otherwise</returns>
-        protected bool GetPrinterCutterOption( int? deviceId )
+        protected bool GetPrinterCutterOption(int? deviceId)
         {
             bool hasCutter = false;
 
             // Get the device from cache
-            var currentGroupTypeIds = ( Session["CheckInGroupTypeIds"] != null ) ? Session["CheckInGroupTypeIds"] as List<int> : new List<int>();
-            KioskDevice kioskDevice = KioskDevice.Get( deviceId.GetValueOrDefault(), currentGroupTypeIds );
-            hasCutter = kioskDevice.Device.GetAttributeValue( "HasCutter" ).AsBoolean();
+            var currentGroupTypeIds = (Session["CheckInGroupTypeIds"] != null) ? Session["CheckInGroupTypeIds"] as List<int> : new List<int>();
+            KioskDevice kioskDevice = KioskDevice.Get(deviceId.GetValueOrDefault(), currentGroupTypeIds);
+            hasCutter = kioskDevice.Device.GetAttributeValue("HasCutter").AsBoolean();
 
             // also check the Description for the w/Cutter keywords
-            if ( ! hasCutter )
+            if (!hasCutter)
             {
-                hasCutter = Regex.IsMatch( kioskDevice.Device.Description, "w/Cutter", RegexOptions.IgnoreCase );
+                hasCutter = Regex.IsMatch(kioskDevice.Device.Description, "w/Cutter", RegexOptions.IgnoreCase);
             }
 
             return hasCutter;
@@ -284,20 +361,20 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
-        protected void lbDone_Click( object sender, EventArgs e )
+        protected void lbDone_Click(object sender, EventArgs e)
         {
             NavigateToHomePage();
         }
 
-        private string ZebraFormatString( string input, bool isJson = false )
+        private string ZebraFormatString(string input, bool isJson = false)
         {
-            if ( isJson )
+            if (isJson)
             {
-                return input.Replace( "é", @"\\82" );  // fix acute e
+                return input.Replace("é", @"\\82");  // fix acute e
             }
             else
             {
-                return input.Replace( "é", @"\82" );  // fix acute e
+                return input.Replace("é", @"\82");  // fix acute e
             }
         }
 
@@ -306,17 +383,17 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
         /// </summary>
         /// <param name="sender">The source of the event.</param>
         /// <param name="e">The <see cref="EventArgs" /> instance containing the event data.</param>
-        protected void lbAnother_Click( object sender, EventArgs e )
+        protected void lbAnother_Click(object sender, EventArgs e)
         {
-            if ( KioskCurrentlyActive )
+            if (KioskCurrentlyActive)
             {
-                foreach ( var family in CurrentCheckInState.CheckIn.Families.Where( f => f.Selected ) )
+                foreach (var family in CurrentCheckInState.CheckIn.Families.Where(f => f.Selected))
                 {
-                    foreach ( var person in family.People.Where( p => p.Selected ) )
+                    foreach (var person in family.People.Where(p => p.Selected))
                     {
                         person.Selected = false;
 
-                        foreach ( var groupType in person.GroupTypes.Where( g => g.Selected ) )
+                        foreach (var groupType in person.GroupTypes.Where(g => g.Selected))
                         {
                             groupType.Selected = false;
                         }
@@ -324,7 +401,7 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
                 }
 
                 SaveState();
-                NavigateToLinkedPage( "PersonSelectPage" );
+                NavigateToLinkedPage("PersonSelectPage");
 
             }
             else
@@ -333,29 +410,75 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
             }
         }
 
-        # region Helper Methods
+        //# region Helper Methods
+        private void LoadPrintLabelAndDraw(string assemblyString, CheckInLabel label, CheckInState checkInState, CheckInPerson person, CheckInGroupType groupType)
+        {
 
-        private void LoadPrintLabelAndPrint( string assemblyString, CheckInLabel label, CheckInState checkInState, CheckInPerson person, CheckInGroupType groupType )
+            try
+            {
+                //Get a list of all the labels as separate bitmaps
+                List<Bitmap> bitmaps = new List<Bitmap>();
+                string line1 = assemblyString.Split(new[] { '\r', '\n' }).FirstOrDefault();
+                // Remove the "Assembly:" prefix
+                var assemblyParts = line1.ReplaceCaseInsensitive("Assembly:", "").Trim().Split(',');
+                var assemblyName = assemblyParts[0];
+                var assemblyClass = assemblyParts[1];
+                var assemblyDrawingClass = assemblyParts[2];
+
+                var drawLabel = DrawLabelHelper.GetDrawLabelClass(assemblyName, assemblyDrawingClass);
+                bitmaps = drawLabel.Draw(label, person, checkInState, groupType);
+
+                for (var i = 0; i < bitmaps.Count; i++)
+                {
+
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+
+                        string base64String = null;
+                        Bitmap bitmap = bitmaps[i];
+                        // Save the bitmap to the stream in a web-friendly format (PNG or JPEG)
+
+                        bitmap.Save(ms, ImageFormat.Png);
+                        byte[] imageBytes = ms.ToArray();
+
+                        // Convert the byte array to a base64 string
+                        base64String = Convert.ToBase64String(imageBytes);
+                        // Inject into the literal control as an HTML image source
+                        phResults.Controls.Add(new LiteralControl(string.Format("<img src='data:image/png;base64,{0}' id='{1}' alt='Bitmap Image' />", base64String, ("bitmap" + i).ToString())));
+                    }
+                }
+
+
+            }
+            catch (Exception ex)
+            {
+                LogException(ex);
+            }
+        }
+
+
+        private void LoadPrintLabelAndPrint(string assemblyString, CheckInLabel label, CheckInState checkInState, CheckInPerson person, CheckInGroupType groupType)
         {
             // Use only the first line
-            string line1 = assemblyString.Split( new[] { '\r', '\n' } ).FirstOrDefault();
+            string line1 = assemblyString.Split(new[] { '\r', '\n' }).FirstOrDefault();
             // Remove the "Assembly:" prefix
-            var assemblyParts = line1.ReplaceCaseInsensitive( "Assembly:", "" ).Trim().Split( ',' );
+            var assemblyParts = line1.ReplaceCaseInsensitive("Assembly:", "").Trim().Split(',');
             var assemblyName = assemblyParts[0];
             var assemblyClass = assemblyParts[1];
 
-            var printLabel = PrintLabelHelper.GetPrintLabelClass( assemblyName, assemblyClass );
-
-            printLabel.Print( label, person, checkInState, groupType );
+            var printLabel = PrintLabelHelper.GetPrintLabelClass(assemblyName, assemblyClass);
+            phResults.Controls.Add(new LiteralControl("<br/>Reached LoadPrintLabelAndPrint"));
+            phResults.Controls.Add(new LiteralControl("<br/>Now the code goes back into the compiled code to get the label provider and set."));
+            printLabel.Print(label, person, checkInState, groupType);
         }
-        
+
         /// <summary>
         /// Adds the label script.
         /// </summary>
         /// <param name="jsonObject">The json object.</param>
-        private void AddLabelScript( string jsonObject )
+        private void AddLabelScript(string jsonObject)
         {
-            string script = string.Format( @"
+            string script = string.Format(@"
 
         // setup deviceready event to wait for cordova
 	    if (navigator.userAgent.match(/(iPhone|iPod|iPad)/)) {{
@@ -397,11 +520,11 @@ namespace RockWeb.Plugins.com_centralaz.CheckIn
 			    }}
             );
 	    }}
-", ZebraFormatString( jsonObject, true ) );
-            ScriptManager.RegisterStartupScript( this, this.GetType(), "addLabelScript", script, true );
+", ZebraFormatString(jsonObject, true));
+            ScriptManager.RegisterStartupScript(this, this.GetType(), "addLabelScript", script, true);
         }
 
-        #endregion
+        //#endregion
     }
 
 }

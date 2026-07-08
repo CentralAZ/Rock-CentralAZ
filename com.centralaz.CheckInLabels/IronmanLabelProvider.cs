@@ -25,6 +25,7 @@ using Rock.Data;
 using Rock.Model;
 using Rock.Web.Cache;
 
+
 namespace com.centralaz.CheckInLabels
 {
     internal class IronmanLabelProvider : IPrintLabel
@@ -39,9 +40,9 @@ namespace com.centralaz.CheckInLabels
         /// <summary>
         /// IPrintLabel implementation to print out name tags.
         /// </summary>
-        void IPrintLabel.Print( CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType )
+        public void Print( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson person, CheckInState checkInState, CheckInGroupType groupType )
         {
-            IEnumerable<CheckInLabel> printFromServer = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Server );
+            IEnumerable<Rock.CheckIn.CheckInLabel> printFromServer = groupType.Labels.Where( l => l.PrintFrom == Rock.Model.PrintFrom.Server );
             if ( printFromServer.Any() )
             {
                 string printerAddress = string.Empty;
@@ -72,7 +73,7 @@ namespace com.centralaz.CheckInLabels
         /// Intialize a person's label set with the information from the given person, occurrence(s),
         /// and attendance record.
         /// </summary>
-        private void InitLabel( CheckInLabel checkInLabel, CheckInPerson attendee, CheckInState checkInState, CheckInGroupType groupType )
+        private void InitLabel( Rock.CheckIn.CheckInLabel checkInLabel, CheckInPerson attendee, CheckInState checkInState, CheckInGroupType groupType )
         {
             label = new IronmanLabelSet
             {
